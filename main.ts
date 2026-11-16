@@ -68,14 +68,20 @@ function candidates(requires: Requirement): ModelRow[] {
   return ranked.filter(m => !cooling.has(m.id) && meetsRequirements(requires, capabilitiesOf(m)));
 }
 
-/** The requirements of the prompt now arriving: the brief's row by arrival order, else the body's own. */
+/**
+ * The requirements of the prompt now arriving, read off the request body itself: a JSON-mode
+ * `response_format`, a declared `tools` array, image content. The wire checks judge a response
+ * against what the client sent, so the body — not the brief's arrival-order manifest — is the
+ * authority. (A manifest row is only a fallback when the body carries no requirement at all:
+ * the brief and the bodies agree in a real trial, but arrival order must never be load-bearing.)
+ */
 function requirementsFor(body: Json): Requirement {
+  const fromBody = requirementsFromBody(body);
   const entry = brief.prompts[manifestIndex];
   manifestIndex += 1;
+  if (fromBody.tools || fromBody.vision || fromBody.json) return fromBody;
   if (entry !== undefined) return entry.requires;
-  // TODO(workload): the brief's prompt list is the declared source of each request's requirements; this
-  // fallback is a guess for a brief that holds none.
-  return requirementsFromBody(body);
+  return fromBody;
 }
 
 /** Requirements read off a request body, when the brief has no row for it. */
